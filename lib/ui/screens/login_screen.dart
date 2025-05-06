@@ -1,3 +1,4 @@
+import 'package:email_validator/email_validator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'home_screen.dart';
@@ -23,9 +24,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String? _validateEmail(String? v) {
     if (v == null || v.isEmpty) return 'Please enter your email';
-    // Corrected regex: remove escape before $ to properly match end of string
-    final pattern = r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$';
-    return RegExp(pattern).hasMatch(v) ? null : 'Invalid email';
+    return EmailValidator.validate(v)
+        ? null
+        : 'Invalid email address';
   }
 
   @override
