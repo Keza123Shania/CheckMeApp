@@ -1,86 +1,82 @@
 import 'package:flutter/material.dart';
-import 'package:checkme/models/todo.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/todo.dart';
+import '../../providers/todo_provider.dart';
 
-
-class TodoDetailsScreen extends StatefulWidget {
-  final Todo todo;
-  const TodoDetailsScreen({Key? key, required this.todo}) : super(key: key);
-
-  @override
-  _TodoDetailsScreenState createState() => _TodoDetailsScreenState();
-}
-
-class _TodoDetailsScreenState extends State<TodoDetailsScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _titleController;
-  late TextEditingController _descController;
+class TodoDetailsScreen extends ConsumerWidget {
+  final String todoId;
+  const TodoDetailsScreen({Key? key, required this.todoId}) : super(key: key);
 
   @override
-  void initState() {
-    super.initState();
-    _titleController =
-        TextEditingController(text: widget.todo.title);
-    _descController =
-        TextEditingController(text: widget.todo.description);
-  }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final todo = ref.watch(todoListProvider).firstWhere((t) => t.id == todoId);
+    final _titleCtl = TextEditingController(text: todo.title);
+    final _descCtl = TextEditingController(text: todo.description);
+    DateTime? _due = todo.dueDate;
+    Category _category = todo.category;
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descController.dispose();
-    super.dispose();
-  }
-
-  void _showEditDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Edit Todo'),
-        content: Form(
-          key: _formKey,
-          child: Column(
+    void _showEditDialog() {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Edit Todo'),
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-                validator: (v) => (v == null || v.isEmpty)
-                    ? 'Please enter a title'
-                    : null,
+              TextField(controller: _titleCtl),
+              TextField(controller: _descCtl),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      final d = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (d != null) _due = d;
+                    },
+                    child: const Text('Pick Due Date'),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(_due == null ? 'No date chosen' : _due!.toLocal().toString().split(' ')[0]),
+                ],
               ),
-              TextFormField(
-                controller: _descController,
-                decoration: const InputDecoration(
-                    labelText: 'Description (optional)'),
+              const SizedBox(height: 8),
+              DropdownButton<Category>(
+                value: _category,
+                items: Category.values.map((c) => DropdownMenuItem(value: c, child: Text(c.name))).toList(),
+                onChanged: (c) => _category = c!,
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                setState(() {
-                  widget.todo.title = _titleController.text;
-                  widget.todo.description = _descController.text;
-                });
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () {
+                final updated = Todo(
+                  id: todo.id,
+                  title: _titleCtl.text,
+                  description: _descCtl.text,
+                  creationDate: todo.creationDate,
+                  dueDate: _due,
+                  category: _category,
+                  isDone: todo.isDone,
+                );
+                ref.read(todoListProvider.notifier).update(updated);
                 Navigator.pop(context);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    final todo = widget.todo;
+    final overdue = todo.dueDate != null && !todo.isDone && todo.dueDate!.isBefore(DateTime.now());
+
     return Scaffold(
       appBar: AppBar(title: const Text('Todo Details')),
       body: Padding(
@@ -88,22 +84,14 @@ class _TodoDetailsScreenState extends State<TodoDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(todo.title,
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(todo.title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            Text('Created: ${todo.creationDate.toLocal()}'),
-            const SizedBox(height: 16),
-            Text(
-                todo.description.isNotEmpty
-                    ? todo.description
-                    : 'No description'),
+            if (todo.dueDate != null) Text('Due: ${todo.dueDate!.toLocal().toString().split(' ')[0]}'),
+            if (overdue) const Text('Overdue', style: TextStyle(color: Colors.red)),
+            const SizedBox(height: 8),
+            Text(todo.description.isNotEmpty ? todo.description : 'No description'),
             const Spacer(),
-            Center(
-              child: ElevatedButton(
-                onPressed: _showEditDialog,
-                child: const Text('Edit'),
-              ),
-            ),
+            Center(child: ElevatedButton(onPressed: _showEditDialog, child: const Text('Edit'))),
           ],
         ),
       ),

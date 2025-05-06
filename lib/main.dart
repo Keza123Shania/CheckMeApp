@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:checkme/ui/screens/login_screen.dart';
+import 'package:checkme/providers/theme_provider.dart';
 
-void main() => runApp(const CheckMeApp());
+void main() {
+  runApp(const ProviderScope(child: CheckMeApp()));
+}
 
-class CheckMeApp extends StatelessWidget {
+class CheckMeApp extends ConsumerWidget {
   const CheckMeApp({Key? key}) : super(key: key);
 
-  // 1️⃣ Define your baby-blue swatch:
+  // Your custom baby‑blue swatch
   static const int _babyBluePrimaryValue = 0xFF89CFF0;
   static const MaterialColor babyBlue = MaterialColor(
     _babyBluePrimaryValue,
@@ -25,16 +29,23 @@ class CheckMeApp extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
       title: 'CheckMe',
       theme: ThemeData(
-
         primarySwatch: babyBlue,
-
         colorScheme: ColorScheme.fromSwatch(primarySwatch: babyBlue)
             .copyWith(secondary: babyBlue.shade200),
       ),
+      darkTheme: ThemeData.dark().copyWith(
+        colorScheme: ColorScheme.dark(
+          primary: babyBlue,
+          secondary: babyBlue.shade200,
+        ),
+      ),
+      themeMode: themeMode,
       home: const LoginScreen(),
     );
   }

@@ -1,91 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'home_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
-
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _emailCtl = TextEditingController();
+  final _pwdCtl = TextEditingController();
+  AutovalidateMode _autoValidate = AutovalidateMode.disabled;
 
   String get _username {
-    final email = _emailController.text;
-    if (!email.contains('@')) return '';
-    final namePart = email.split('@')[0];
-    return namePart.isNotEmpty
-        ? '${namePart[0].toUpperCase()}${namePart.substring(1)}'
-        : '';
+    final e = _emailCtl.text;
+    if (!e.contains('@')) return '';
+    final n = e.split('@')[0];
+    return n.isNotEmpty ? '${n[0].toUpperCase()}${n.substring(1)}' : '';
+  }
+
+  String? _validateEmail(String? v) {
+    if (v == null || v.isEmpty) return 'Please enter your email';
+    // Corrected regex: remove escape before $ to properly match end of string
+    final pattern = r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$';
+    return RegExp(pattern).hasMatch(v) ? null : 'Invalid email';
+  }
+
+  @override
+  void dispose() {
+    _emailCtl.dispose();
+    _pwdCtl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       appBar: AppBar(title: const Text('Login')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
+            autovalidateMode: _autoValidate,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const CircleAvatar(
-                  backgroundImage: AssetImage('assets/login_avatar.png'),
                   radius: 50,
+                  backgroundImage: AssetImage('assets/login_avatar.png'),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
-                  controller: _emailController,
+                  controller: _emailCtl,
+                  keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    hintText: 'Enter Your Email',
                     labelText: 'Email',
+                    prefixIcon: Icon(Icons.email),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    final emailRegex =
-                    RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                    if (!emailRegex.hasMatch(value)) {
-                      return 'Enter a valid email address';
-                    }
-                    return null;
-                  },
+                  validator: _validateEmail,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
-                  controller: _passwordController,
+                  controller: _pwdCtl,
                   obscureText: true,
-                  obscuringCharacter: '*',
                   decoration: const InputDecoration(
-                    hintText: 'Enter Your Password',
                     labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
+                  validator: (v) => (v == null || v.length < 6) ? 'Min 6 chars' : null,
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
+                    setState(() => _autoValidate = AutovalidateMode.always);
                     if (_formKey.currentState!.validate()) {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              HomeScreen(username: _username),
+                          builder: (_) => HomeScreen(username: _username),
                         ),
                       );
                     }
