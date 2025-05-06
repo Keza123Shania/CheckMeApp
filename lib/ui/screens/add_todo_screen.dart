@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/todo.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/todo_provider.dart';
 
 class AddTodoScreen extends ConsumerStatefulWidget {
-  const AddTodoScreen({Key? key}) : super(key: key);
+  const AddTodoScreen({super.key});
   @override
   ConsumerState<AddTodoScreen> createState() => _AddTodoScreenState();
 }
@@ -28,12 +29,15 @@ class _AddTodoScreenState extends ConsumerState<AddTodoScreen> {
 
   void _save() {
     if (_formKey.currentState!.validate()) {
-      ref.read(todoListProvider.notifier).addTodo(
-        _titleCtl.text,
-        _descCtl.text,
-        _due,
-        _category,
+      final userEmail = ref.read(currentUserProvider)!;
+      final todo = Todo(
+        title: _titleCtl.text,
+        description: _descCtl.text,
+        dueDate: _due,
+        category: _category,
+        userEmail: userEmail,
       );
+      ref.read(todoListProvider.notifier).addTodo(todo);
       Navigator.pop(context);
     }
   }

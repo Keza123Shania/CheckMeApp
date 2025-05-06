@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/todo.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/todo_provider.dart';
 import '../../providers/filters.dart';
 import '../../providers/theme_provider.dart';
-import 'add_todo_screen.dart';
 import 'todo_details_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
-  final String username;
-  const HomeScreen({Key? key, required this.username}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final todos = ref.watch(filteredTodosProvider);
+    final userEmail = ref.watch(currentUserProvider)!;
+    final todos     = ref.watch(filteredTodosProvider);
     final catFilter = ref.watch(categoryFilterProvider);
-    final compFilter = ref.watch(completionFilterProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Todo Dashboard'),
+        title: Text('Todos for $userEmail'),
         actions: [
           IconButton(
             icon: const Icon(Icons.brightness_6),
@@ -27,6 +26,14 @@ class HomeScreen extends ConsumerWidget {
               final current = ref.read(themeModeProvider.notifier).state;
               ref.read(themeModeProvider.notifier).state =
               current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              ref.read(currentUserProvider.notifier).state = null;
+              ref.read(todoListProvider.notifier).state = [];
+              Navigator.pushReplacementNamed(context, '/login');
             },
           ),
         ],
@@ -51,10 +58,7 @@ class HomeScreen extends ConsumerWidget {
                   value: catFilter,
                   hint: const Text('Category'),
                   items: [null, ...Category.values]
-                      .map((c) => DropdownMenuItem(
-                    value: c,
-                    child: Text(c?.name ?? 'All'),
-                  ))
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c?.name ?? 'All')))
                       .toList(),
                   onChanged: (c) => ref.read(categoryFilterProvider.notifier).state = c,
                 ),
@@ -101,18 +105,14 @@ class HomeScreen extends ConsumerWidget {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (t.dueDate != null)
-                          Text('Due: ${t.dueDate!.toLocal().toString().split(' ')[0]}'),
-                        if (overdue)
-                          const Text('Overdue', style: TextStyle(color: Colors.red)),
+                        if (t.dueDate != null) Text('Due: ${t.dueDate!.toLocal().toString().split(' ')[0]}'),
+                        if (overdue) const Text('Overdue', style: TextStyle(color: Colors.red)),
                         Text('Category: ${t.category.name}'),
                       ],
                     ),
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => TodoDetailsScreen(todoId: t.id),
-                      ),
+                      MaterialPageRoute(builder: (_) => TodoDetailsScreen(todoId: t.id)),
                     ),
                   ),
                 );
@@ -122,10 +122,7 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AddTodoScreen()),
-        ),
+        onPressed: () => Navigator.pushNamed(context, '/add'),
         child: const Icon(Icons.add),
       ),
     );

@@ -1,55 +1,50 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import '../models/todo.dart';
+import '../services/database_helper.dart';
+import 'auth_provider.dart';
 
-final todoListProvider =
-StateNotifierProvider<TodoListNotifier, List<Todo>>(
-      (ref) => TodoListNotifier(),
+final todoListProvider = StateNotifierProvider<TodoListNotifier, List<Todo>>(
+      (ref) => TodoListNotifier(ref),
 );
 
 class TodoListNotifier extends StateNotifier<List<Todo>> {
-  TodoListNotifier() : super([]);
-  final _uuid = const Uuid();
+  final Ref ref;
+  TodoListNotifier(this.ref): super([]);
 
-  void addTodo(
-      String title,
-      String desc,
-      DateTime? dueDate,
-      Category category,
-      ) {
-    final t = Todo(
-      id: _uuid.v4(),
-      title: title,
-      description: desc,
-      dueDate: dueDate,
-      category: category,
+  Future<void> loadTodos() async {
+    final email = ref.read(currentUserProvider)!;
+    final maps = await DatabaseHelper.instance.fetchTodos(email);
+    state = maps.map((m) => Todo.fromJson(m)).toList();
+  }
+
+  Future<void> addTodo(Todo t) async {
+    await DatabaseHelper.instance.insertTodo(t.toJson());
+    state = [t, ...state];
+  }
+
+  Future<void> toggle(String id) async {
+    final t = state.firstWhere((t) => t.id == id);
+    final updated = Todo(
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      isDone: !t.isDone,
+      creationDate: t.creationDate,
+      dueDate: t.dueDate,
+      category: t.category,
+      userEmail: t.userEmail,
     );
-    state = [...state, t];
+    await DatabaseHelper.instance.updateTodo(updated.toJson());
+    state = state.map((e) => e.id == id ? updated : e).toList();
   }
 
-// lib/providers/todo_provider.dart
-
-  void toggle(String id) {
-    state = state.map((t) {
-      if (t.id != id) return t;
-      // re‑build the Todo, passing in the old creationDate:
-      return Todo(
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        isDone: !t.isDone,
-        creationDate: t.creationDate,  // ← preserve the original
-        dueDate: t.dueDate,
-        category: t.category,
-      );
-    }).toList();
+  Future<void> update(Todo updated) async {
+    await DatabaseHelper.instance.updateTodo(updated.toJson());
+    state = state.map((e) => e.id == updated.id ? updated : e).toList();
   }
 
-  void update(Todo updated) {
-    state = state.map((t) => t.id == updated.id ? updated : t).toList();
-  }
-
-  void delete(String id) {
-    state = state.where((t) => t.id != id).toList();
+  Future<void> delete(String id) async {
+    await DatabaseHelper.instance.deleteTodo(id);
+    state = state.where((e) => e.id != id).toList();
   }
 }

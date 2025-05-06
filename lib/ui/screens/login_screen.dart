@@ -1,11 +1,12 @@
 import 'package:email_validator/email_validator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../services/auth_services.dart';
-import 'home_screen.dart';
+import '../../services/database_helper.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/todo_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
@@ -79,21 +80,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () async {
                     setState(() => _autoValidate = AutovalidateMode.always);
                     if (_formKey.currentState!.validate()) {
-                      final ok = await AuthService.login(
-                        _emailCtl.text,
-                        _pwdCtl.text,
-                      );
+                      final ok = await DatabaseHelper.instance.login(
+                          _emailCtl.text.trim(), _pwdCtl.text.trim());
                       if (ok) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => HomeScreen(username: _username),
-                          ),
-                        );
+                        ref.read(currentUserProvider.notifier).state = _emailCtl.text.trim();
+                        await ref.read(todoListProvider.notifier).loadTodos();
+                        Navigator.pushReplacementNamed(context, '/home');
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Email or password incorrect'))
-                        );
+                            const SnackBar(content: Text('Invalid credentials')));
                       }
                     }
                   },

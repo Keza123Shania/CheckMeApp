@@ -1,6 +1,8 @@
+import 'package:checkme/ui/screens/add_todo_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:checkme/ui/screens/login_screen.dart';
+import 'package:checkme/ui/screens/home_screen.dart';
 import 'package:checkme/providers/theme_provider.dart';
 
 void main() {
@@ -8,9 +10,8 @@ void main() {
 }
 
 class CheckMeApp extends ConsumerWidget {
-  const CheckMeApp({Key? key}) : super(key: key);
+  const CheckMeApp({super.key});
 
-  // Your custom baby‑blue swatch
   static const int _babyBluePrimaryValue = 0xFF89CFF0;
   static const MaterialColor babyBlue = MaterialColor(
     _babyBluePrimaryValue,
@@ -46,7 +47,11 @@ class CheckMeApp extends ConsumerWidget {
         ),
       ),
       themeMode: themeMode,
-      home: const LoginScreen(),
+      initialRoute: '/login',
+      routes: {
+        '/login': (c) => const LoginScreen(),
+        '/home':  (c) => const HomeScreen(),
+        '/add':   (c) => const AddTodoScreen(),
+      },
     );
-  }
-}
+  }}
