@@ -1,3 +1,4 @@
+// File: lib/ui/screens/login_screen.dart
 import 'package:email_validator/email_validator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import '../../providers/todo_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
+
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
@@ -17,18 +19,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _pwdCtl = TextEditingController();
   AutovalidateMode _autoValidate = AutovalidateMode.disabled;
 
-  String get _username {
-    final e = _emailCtl.text;
-    if (!e.contains('@')) return '';
-    final n = e.split('@')[0];
-    return n.isNotEmpty ? '${n[0].toUpperCase()}${n.substring(1)}' : '';
-  }
-
   String? _validateEmail(String? v) {
     if (v == null || v.isEmpty) return 'Please enter your email';
-    return EmailValidator.validate(v)
-        ? null
-        : 'Invalid email address';
+    return EmailValidator.validate(v) ? null : 'Invalid email address';
   }
 
   @override
@@ -40,6 +33,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryBlue = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Login')),
       body: Center(
@@ -77,29 +72,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,  // button blue
+                    foregroundColor: Colors.white,  // text white
+                    minimumSize: const Size.fromHeight(48), // full-width
+                  ),
                   onPressed: () async {
                     setState(() => _autoValidate = AutovalidateMode.always);
                     if (_formKey.currentState!.validate()) {
                       final ok = await DatabaseHelper.instance.login(
-                          _emailCtl.text.trim(), _pwdCtl.text.trim());
+                        _emailCtl.text.trim(),
+                        _pwdCtl.text.trim(),
+                      );
                       if (ok) {
                         ref.read(currentUserProvider.notifier).state = _emailCtl.text.trim();
                         await ref.read(todoListProvider.notifier).loadTodos();
                         Navigator.pushReplacementNamed(context, '/home');
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Invalid credentials')));
+                          const SnackBar(content: Text('Invalid credentials')),
+                        );
                       }
                     }
                   },
                   child: const Text('LOGIN'),
                 ),
-                TextButton(
-                  onPressed: () => Navigator.pushReplacementNamed(context, '/register'),
-
-                  child: const Text("Don't have an account? Register"),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Don't have an account?",
+                      style: TextStyle(color: Colors.black),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pushReplacementNamed(context, '/register'),
+                      child: Text(
+                        'Register',
+                        style: TextStyle(color: primaryBlue),
+                      ),
+                    ),
+                  ],
                 ),
-
               ],
             ),
           ),

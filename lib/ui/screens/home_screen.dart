@@ -88,13 +88,39 @@ class HomeScreen extends ConsumerWidget {
 
                 return Dismissible(
                   key: Key(t.id),
+
+                  // 1️⃣ Ask user before actually dismissing
+                  confirmDismiss: (direction) async {
+                    return await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Delete todo?'),
+                        content: const Text('This cannot be undone.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    ) ?? false;  // treat null as false
+                  },
+
+                  // 2️⃣ Only if confirmDismiss returns true does onDismissed run
+                  onDismissed: (_) async {
+                    await ref.read(todoListProvider.notifier).delete(t.id);
+                  },
+
                   background: Container(
                     color: Colors.red,
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 20),
                     child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  onDismissed: (_) => ref.read(todoListProvider.notifier).delete(t.id),
                   child: ListTile(
                     leading: Checkbox(
                       value: t.isDone,

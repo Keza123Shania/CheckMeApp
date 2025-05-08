@@ -19,14 +19,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _isRegistering = false;
 
   String? _validateEmail(String? v) {
-    if (v == null || v.isEmpty) return 'Please enter email';
-    // Basic regex or use email_validator package
+    if (v == null || v.isEmpty) return 'Please enter your email';
     final pattern = r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$';
     return RegExp(pattern).hasMatch(v) ? null : 'Invalid email';
   }
 
   String? _validatePassword(String? v) {
-    if (v == null || v.length < 6) return 'Min 6 chars';
+    if (v == null || v.length < 6) return 'Password must be at least 6 characters';
     return null;
   }
 
@@ -45,16 +44,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isRegistering = false);
     if (success) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Registered! Please log in.")));
+          .showSnackBar(const SnackBar(content: Text('Registered! Please log in.')));
       Navigator.pushReplacementNamed(context, '/login');
     } else {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Email already exists")));
+          .showSnackBar(const SnackBar(content: Text('Email already exists')));
     }
   }
 
   @override
+  void dispose() {
+    _emailCtl.dispose();
+    _pwdCtl.dispose();
+    _confirmCtl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final primaryBlue = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Register')),
       body: Center(
@@ -62,33 +71,70 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextFormField(
-                controller: _emailCtl,
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: _validateEmail,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _pwdCtl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password'),
-                validator: _validatePassword,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _confirmCtl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm Password'),
-                validator: _validatePassword,
-              ),
-              const SizedBox(height: 24),
-              _isRegistering
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                  onPressed: _register, child: const Text('REGISTER')),
-            ]),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _emailCtl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                  ),
+                  validator: _validateEmail,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _pwdCtl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                  validator: _validatePassword,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _confirmCtl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm Password',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  validator: _validatePassword,
+                ),
+                const SizedBox(height: 24),
+                _isRegistering
+                    ? const CircularProgressIndicator()
+                    : ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  onPressed: _register,
+                  child: const Text('REGISTER'),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Already have an account?',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                    TextButton(
+                      onPressed: () =>
+                          Navigator.pushReplacementNamed(context, '/login'),
+                      child: Text(
+                        'Login',
+                        style: TextStyle(color: primaryBlue),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
