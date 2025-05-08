@@ -35,7 +35,8 @@ dependencies:
   flutter_riverpod: ^2.6.1
   email_validator: ^2.0.1
   # SQLite database
-  sqflite: ^2.0.0+4
+  sqflite: ^2.3.0
+  path_provider: ^2.1.1
   path:   ^1.8.0
   # (Optional) UUID generator for your Todo IDs
   uuid: ^3.0.7

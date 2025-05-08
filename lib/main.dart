@@ -1,3 +1,4 @@
+import 'package:checkme/ui/screens/RegisterScreen.dart';
 import 'package:checkme/ui/screens/add_todo_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,6 +50,7 @@ class CheckMeApp extends ConsumerWidget {
       themeMode: themeMode,
       initialRoute: '/login',
       routes: {
+        '/register': (c) => const RegisterScreen(),
         '/login': (c) => const LoginScreen(),
         '/home':  (c) => const HomeScreen(),
         '/add':   (c) => const AddTodoScreen(),

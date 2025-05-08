@@ -94,6 +94,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   },
                   child: const Text('LOGIN'),
                 ),
+                TextButton(
+                  onPressed: () => Navigator.pushReplacementNamed(context, '/register'),
+
+                  child: const Text("Don't have an account? Register"),
+                ),
 
               ],
             ),

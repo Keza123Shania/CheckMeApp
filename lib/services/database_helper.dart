@@ -68,6 +68,17 @@ class DatabaseHelper {
       orderBy: 'creationDate DESC',
     );
   }
+// lib/services/database_helper.dart
+  Future<bool> insertUser(String email, String password) async {
+    final db = await database;
+    try {
+      await db.insert('users', {'email': email, 'password': password});
+      return true;
+    } catch (e) {
+      // likely a UNIQUE constraint failure for existing email
+      return false;
+    }
+  }
 
   Future<void> insertTodo(Map<String,Object?> todo) async {
     final db = await database;
