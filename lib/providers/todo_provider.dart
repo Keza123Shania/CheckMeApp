@@ -37,6 +37,24 @@ class TodoListNotifier extends StateNotifier<AsyncValue<List<Todo>>> {
     }
   }
 
+  // FIX: Implement clearAll method for the Danger Zone button
+  Future<void> clearAll() async {
+    if (_userEmail == null) return;
+    final currentTodos = state.valueOrNull ?? [];
+    try {
+      final db = DatabaseHelper.instance;
+      for (var todo in currentTodos) {
+        await db.deleteTodo(todo.id);
+        _ref.read(notificationServiceProvider).cancelTodoNotification(todo.id);
+      }
+      // Set state directly to empty array
+      state = const AsyncValue.data([]);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+
   Future<void> addTodo(Todo t) async {
     try {
       await DatabaseHelper.instance.insertTodo(t.toJson());
@@ -87,4 +105,3 @@ class TodoListNotifier extends StateNotifier<AsyncValue<List<Todo>>> {
     }
   }
 }
-

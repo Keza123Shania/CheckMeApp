@@ -15,19 +15,22 @@ dependencies:
   shared_preferences: ^2.2.3
   email_validator: ^2.1.17
 
-  # SQLite database
-  sqflite: ^2.3.0
-  sqflite_common_ffi: ^2.3.3 # Add this line
+  # Database and Persistence
+  sqflite: ^2.4.0
+  sqflite_common_ffi: ^2.3.5
   path_provider: ^2.1.1
   path: ^1.8.3
+
+  # Utility Packages
+  intl: ^0.19.0 # For DateFormat
+  uuid: ^4.4.0
+  image_picker: ^1.1.2 # For profile picture upload
+  url_launcher: ^6.3.0 # NEW: For external links (e.g., Forgot Password, contact us)
 
   # Local Notifications
   flutter_local_notifications: ^17.2.1
   timezone: ^0.9.4
 
-
-  # (Optional) UUID generator for your Todo IDs
-  uuid: ^4.4.0
 
   # Cupertino icons
   cupertino_icons: ^1.0.8
@@ -43,4 +46,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/login_avatar.png
-
+    - assets/login_illustration.png # Ensure your new illustration is here

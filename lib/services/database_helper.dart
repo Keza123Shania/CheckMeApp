@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'dart:developer';
 
 class DatabaseHelper {
   static final instance = DatabaseHelper._init();
@@ -61,8 +62,34 @@ class DatabaseHelper {
       where: 'email = ? AND password = ?',
       whereArgs: [email, password],
     );
-    return res.isNotEmpty;
+    final isValid = res.isNotEmpty;
+    log('DB_HELPER: Login attempt for $email. Valid: $isValid');
+    return isValid;
   }
+
+  // NEW FEATURE: Password Update
+  // Checks old password against database and updates with new password.
+  Future<void> updateUserPassword(String email, String oldPassword, String newPassword) async {
+    final db = await database;
+
+    // Step 1: Verify the old password.
+    final isValid = await login(email, oldPassword);
+
+    if (!isValid) {
+      log('DB_HELPER: Password change failed for $email. Invalid old password.');
+      throw 'Invalid current password.';
+    }
+
+    // Step 2: Update the password.
+    await db.update(
+        'users',
+        {'password': newPassword},
+        where: 'email = ?',
+        whereArgs: [email]
+    );
+    log('DB_HELPER: Password successfully updated for $email.');
+  }
+
 
   // User CRUD
   Future<Map<String, dynamic>?> getUser(String email) async {
@@ -90,14 +117,16 @@ class DatabaseHelper {
       orderBy: 'creationDate DESC',
     );
   }
-// lib/services/database_helper.dart
+
   Future<bool> insertUser(String email, String password) async {
     final db = await database;
     try {
       await db.insert('users', {'email': email, 'password': password, 'name': 'New User'});
+      log('DB_HELPER: User $email successfully registered.');
       return true;
     } catch (e) {
       // likely a UNIQUE constraint failure for existing email
+      log('DB_HELPER: Registration failed for $email. Error: $e');
       return false;
     }
   }
@@ -106,13 +135,14 @@ class DatabaseHelper {
     final db = await database;
     await db.insert('todos', todo);
   }
+
   Future<void> updateTodo(Map<String,Object?> todo) async {
     final db = await database;
     await db.update('todos', todo, where: 'id = ?', whereArgs: [todo['id']]);
   }
+
   Future<void> deleteTodo(String id) async {
     final db = await database;
     await db.delete('todos', where: 'id = ?', whereArgs: [id]);
   }
 }
-

@@ -1,3 +1,5 @@
+import 'package:uuid/uuid.dart';
+
 class User {
   String name;
   final String email;
@@ -8,6 +10,19 @@ class User {
     required this.email,
     this.avatarUrl,
   });
+
+  // FIX: Added copyWith method to support non-destructive updates (like avatar upload)
+  User copyWith({
+    String? name,
+    String? email,
+    String? avatarUrl,
+  }) {
+    return User(
+      name: name ?? this.name,
+      email: email ?? this.email,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+    );
+  }
 
   factory User.fromJson(Map<String, dynamic> json) => User(
     name: json['name'] as String? ?? '',

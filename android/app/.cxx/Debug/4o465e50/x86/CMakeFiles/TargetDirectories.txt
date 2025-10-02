@@ -1,0 +1,2 @@
+/Users/umuravauca/StudioProjects/CheckMeApp/android/app/.cxx/Debug/4o465e50/x86/CMakeFiles/edit_cache.dir
+/Users/umuravauca/StudioProjects/CheckMeApp/android/app/.cxx/Debug/4o465e50/x86/CMakeFiles/rebuild_cache.dir

@@ -7,9 +7,12 @@ import 'package:checkme/ui/screens/home_screen.dart';
 import 'package:checkme/providers/theme_provider.dart';
 import 'package:checkme/services/notification_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:intl/intl.dart';
+import 'models/todo.dart';
 import 'ui/screens/add_todo_screen.dart';
 import 'ui/screens/RegisterScreen.dart';
-
+import 'ui/screens/todo_details_screen.dart';
+import 'ui/screens/splash_screen.dart'; // NEW: Import the splash screen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +24,7 @@ void main() async {
   }
 
   final container = ProviderContainer();
+  // Ensure NotificationService is initialized before running the app
   await container.read(notificationServiceProvider).init();
   runApp(UncontrolledProviderScope(container: container, child: const CheckMeApp()));
 }
@@ -51,10 +55,15 @@ class CheckMeApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'CheckMe',
+      // Ensure the same theme definition is used for consistency
       theme: ThemeData(
         primarySwatch: babyBlue,
         colorScheme: ColorScheme.fromSwatch(primarySwatch: babyBlue)
-            .copyWith(secondary: babyBlue.shade200),
+            .copyWith(secondary: babyBlue.shade200, primary: babyBlue),
+        appBarTheme: const AppBarTheme(
+          surfaceTintColor: Colors.transparent, // Prevents default surface color in latest Flutter versions
+          iconTheme: IconThemeData(color: Colors.black),
+        ),
       ),
       darkTheme: ThemeData.dark().copyWith(
         colorScheme: ColorScheme.dark(
@@ -63,14 +72,25 @@ class CheckMeApp extends ConsumerWidget {
         ),
       ),
       themeMode: themeMode,
-      home: const AuthWrapper(), // This is the fix for the UI not showing
+      // CRITICAL FIX: Set the home to the new SplashScreen
+      home: const SplashScreen(),
       routes: {
         '/register': (c) => const RegisterScreen(),
         '/login': (c) => const LoginScreen(),
         '/home':  (c) => const HomeScreen(),
-        '/add':   (c) => const AddTodoScreen(),
+        '/add':   (c) {
+          final args = ModalRoute.of(c)?.settings.arguments;
+          final todoToEdit = args is Todo ? args : null;
+          return AddTodoScreen(todo: todoToEdit);
+        },
+        '/details': (c) {
+          final todoId = ModalRoute.of(c)!.settings.arguments as String?;
+          if (todoId == null) {
+            return const Scaffold(body: Center(child: Text('Error: Todo ID missing')));
+          }
+          return TodoDetailsScreen(todoId: todoId);
+        },
       },
     );
   }
 }
-
