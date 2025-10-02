@@ -1,50 +1,90 @@
+import 'package:checkme/services/notification_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/todo.dart';
 import '../services/database_helper.dart';
 import 'auth_provider.dart';
 
-final todoListProvider = StateNotifierProvider<TodoListNotifier, List<Todo>>(
-      (ref) => TodoListNotifier(ref),
-);
+final todoListProvider =
+StateNotifierProvider<TodoListNotifier, AsyncValue<List<Todo>>>((ref) {
+  return TodoListNotifier(ref);
+});
 
-class TodoListNotifier extends StateNotifier<List<Todo>> {
-  final Ref ref;
-  TodoListNotifier(this.ref): super([]);
+class TodoListNotifier extends StateNotifier<AsyncValue<List<Todo>>> {
+  final Ref _ref;
+  String? _userEmail;
+
+  TodoListNotifier(this._ref) : super(const AsyncValue.loading()) {
+    _ref.listen(authStateProvider, (previous, next) {
+      final userEmail = next.asData?.value;
+      _userEmail = userEmail;
+      if (userEmail != null) {
+        loadTodos();
+      } else {
+        state = const AsyncValue.data([]);
+      }
+    }, fireImmediately: true);
+  }
 
   Future<void> loadTodos() async {
-    final email = ref.read(currentUserProvider)!;
-    final maps = await DatabaseHelper.instance.fetchTodos(email);
-    state = maps.map((m) => Todo.fromJson(m)).toList();
+    if (_userEmail == null) return;
+    state = const AsyncValue.loading();
+    try {
+      final maps = await DatabaseHelper.instance.fetchTodos(_userEmail!);
+      final todos = maps.map((m) => Todo.fromJson(m)).toList();
+      state = AsyncValue.data(todos);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
   }
 
   Future<void> addTodo(Todo t) async {
-    await DatabaseHelper.instance.insertTodo(t.toJson());
-    state = [t, ...state];
+    try {
+      await DatabaseHelper.instance.insertTodo(t.toJson());
+      // Re-fetch to ensure consistency
+      await loadTodos();
+    } catch (e) {
+      // Handle error
+    }
   }
 
   Future<void> toggle(String id) async {
-    final t = state.firstWhere((t) => t.id == id);
-    final updated = Todo(
-      id: t.id,
-      title: t.title,
-      description: t.description,
-      isDone: !t.isDone,
-      creationDate: t.creationDate,
-      dueDate: t.dueDate,
-      category: t.category,
-      userEmail: t.userEmail,
-    );
-    await DatabaseHelper.instance.updateTodo(updated.toJson());
-    state = state.map((e) => e.id == id ? updated : e).toList();
+    final currentTodos = state.valueOrNull ?? [];
+    final t = currentTodos.firstWhere((todo) => todo.id == id);
+    final updated = t.copyWith(isDone: !t.isDone);
+
+    try {
+      await DatabaseHelper.instance.updateTodo(updated.toJson());
+      if (updated.isDone) {
+        _ref
+            .read(notificationServiceProvider)
+            .cancelTodoNotification(id);
+      }
+      await loadTodos();
+    } catch (e) {
+      // Handle error
+    }
   }
 
   Future<void> update(Todo updated) async {
-    await DatabaseHelper.instance.updateTodo(updated.toJson());
-    state = state.map((e) => e.id == updated.id ? updated : e).toList();
+    try {
+      await DatabaseHelper.instance.updateTodo(updated.toJson());
+      _ref
+          .read(notificationServiceProvider)
+          .scheduleTodoNotification(updated);
+      await loadTodos();
+    } catch (e) {
+      // Handle error
+    }
   }
 
   Future<void> delete(String id) async {
-    await DatabaseHelper.instance.deleteTodo(id);
-    state = state.where((e) => e.id != id).toList();
+    try {
+      await DatabaseHelper.instance.deleteTodo(id);
+      _ref.read(notificationServiceProvider).cancelTodoNotification(id);
+      await loadTodos();
+    } catch (e) {
+      // Handle error
+    }
   }
 }
+

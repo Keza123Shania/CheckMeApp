@@ -1,39 +1,77 @@
+import 'package:checkme/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/todo.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/todo_provider.dart';
 import '../../providers/filters.dart';
-import '../../providers/theme_provider.dart';
-import 'todo_details_screen.dart';
+import 'add_todo_screen.dart';
+import 'profile_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    const TodoListScreen(),
+    const ProfileScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check_circle_outline),
+            label: 'Todos',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TodoListScreen extends ConsumerWidget {
+  const TodoListScreen({super.key});
+
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userEmail = ref.watch(currentUserProvider)!;
-    final todos     = ref.watch(filteredTodosProvider);
+    final userAsyncValue = ref.watch(userProvider);
+    final todos = ref.watch(filteredTodosProvider);
     final catFilter = ref.watch(categoryFilterProvider);
+
+    if (userAsyncValue.isLoading || !userAsyncValue.hasValue || userAsyncValue.value == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final user = userAsyncValue.value!;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Todos for $userEmail'),
+        title: Text('${user.name}\'s Todos'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.brightness_6),
-            onPressed: () {
-              final current = ref.read(themeModeProvider.notifier).state;
-              ref.read(themeModeProvider.notifier).state =
-              current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
-              ref.read(currentUserProvider.notifier).state = null;
-              ref.read(todoListProvider.notifier).state = [];
-              Navigator.pushReplacementNamed(context, '/login');
+              // This line is now fixed to use the correct provider
+              ref.read(authRepositoryProvider).logout();
             },
           ),
         ],
@@ -58,22 +96,27 @@ class HomeScreen extends ConsumerWidget {
                   value: catFilter,
                   hint: const Text('Category'),
                   items: [null, ...Category.values]
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c?.name ?? 'All')))
+                      .map((c) => DropdownMenuItem(
+                      value: c, child: Text(c?.name ?? 'All')))
                       .toList(),
-                  onChanged: (c) => ref.read(categoryFilterProvider.notifier).state = c,
+                  onChanged: (c) =>
+                  ref.read(categoryFilterProvider.notifier).state = c,
                 ),
                 const SizedBox(width: 16),
                 PopupMenuButton<FilterOption>(
-                  onSelected: (f) => ref.read(completionFilterProvider.notifier).state = f,
+                  onSelected: (f) =>
+                  ref.read(completionFilterProvider.notifier).state = f,
                   icon: const Icon(Icons.filter_list),
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: FilterOption.All, child: Text('All')),
-                    PopupMenuItem(value: FilterOption.Completed, child: Text('Completed')),
-                    PopupMenuItem(value: FilterOption.Pending, child: Text('Pending')),
+                    PopupMenuItem(
+                        value: FilterOption.All, child: Text('All')),
+                    PopupMenuItem(
+                        value: FilterOption.Completed,
+                        child: Text('Completed')),
+                    PopupMenuItem(
+                        value: FilterOption.Pending, child: Text('Pending')),
                   ],
                 ),
-
-
               ],
             ),
           ),
@@ -84,64 +127,78 @@ class HomeScreen extends ConsumerWidget {
               itemCount: todos.length,
               itemBuilder: (ctx, i) {
                 final t = todos[i];
-                final overdue = t.dueDate != null && !t.isDone && t.dueDate!.isBefore(DateTime.now());
+                final overdue = t.dueDate != null &&
+                    !t.isDone &&
+                    t.dueDate!.isBefore(DateTime.now());
 
                 return Dismissible(
                   key: Key(t.id),
-
-                  // 1️⃣ Ask user before actually dismissing
                   confirmDismiss: (direction) async {
                     return await showDialog<bool>(
                       context: context,
                       builder: (_) => AlertDialog(
                         title: const Text('Delete todo?'),
-                        content: const Text('This cannot be undone.'),
+                        content:
+                        const Text('This cannot be undone.'),
                         actions: [
                           TextButton(
-                            onPressed: () => Navigator.pop(context, false),
+                            onPressed: () =>
+                                Navigator.pop(context, false),
                             child: const Text('Cancel'),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pop(context, true),
+                            onPressed: () =>
+                                Navigator.pop(context, true),
                             child: const Text('Delete'),
                           ),
                         ],
                       ),
-                    ) ?? false;  // treat null as false
+                    ) ??
+                        false; // treat null as false
                   },
-
-                  // 2️⃣ Only if confirmDismiss returns true does onDismissed run
                   onDismissed: (_) async {
-                    await ref.read(todoListProvider.notifier).delete(t.id);
+                    await ref
+                        .read(todoListProvider.notifier)
+                        .delete(t.id);
                   },
-
                   background: Container(
                     color: Colors.red,
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
+                    child:
+                    const Icon(Icons.delete, color: Colors.white),
                   ),
                   child: ListTile(
                     leading: Checkbox(
                       value: t.isDone,
-                      onChanged: (_) => ref.read(todoListProvider.notifier).toggle(t.id),
+                      onChanged: (_) => ref
+                          .read(todoListProvider.notifier)
+                          .toggle(t.id),
                     ),
                     title: Text(
                       t.title,
-                      style: TextStyle(decoration: t.isDone ? TextDecoration.lineThrough : null),
+                      style: TextStyle(
+                          decoration: t.isDone
+                              ? TextDecoration.lineThrough
+                              : null),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (t.dueDate != null) Text('Due: ${t.dueDate!.toLocal().toString().split(' ')[0]}'),
-                        if (overdue) const Text('Overdue', style: TextStyle(color: Colors.red)),
+                        if (t.dueDate != null)
+                          Text(
+                              'Due: ${t.dueDate!.toLocal().toString().split(' ')[0]}'),
+                        if (overdue)
+                          const Text('Overdue',
+                              style: TextStyle(color: Colors.red)),
                         Text('Category: ${t.category.name}'),
                       ],
                     ),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => TodoDetailsScreen(todoId: t.id)),
-                    ),
+                    onTap: () {
+                      // Navigate to a non-existent route to demonstrate
+                      // we'll need a details screen later.
+                      // For now, this will do nothing.
+                    },
                   ),
                 );
               },
@@ -156,3 +213,4 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 }
+

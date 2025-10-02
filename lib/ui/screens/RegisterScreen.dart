@@ -1,11 +1,10 @@
 // File: lib/ui/screens/register_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../services/database_helper.dart';
 import '../../providers/auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -20,7 +19,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   String? _validateEmail(String? v) {
     if (v == null || v.isEmpty) return 'Please enter your email';
-    final pattern = r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$';
+    const pattern = r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$';
     return RegExp(pattern).hasMatch(v) ? null : 'Invalid email';
   }
 
@@ -37,18 +36,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
     setState(() => _isRegistering = true);
-    final success = await DatabaseHelper.instance.insertUser(
-      _emailCtl.text.trim(),
-      _pwdCtl.text,
-    );
-    setState(() => _isRegistering = false);
-    if (success) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Registered! Please log in.')));
-      Navigator.pushReplacementNamed(context, '/login');
-    } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Email already exists')));
+    try {
+      await ref.read(authStateProvider.notifier).register(
+        _emailCtl.text.trim(),
+        _pwdCtl.text,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Registered! Please log in.')));
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRegistering = false);
+      }
     }
   }
 

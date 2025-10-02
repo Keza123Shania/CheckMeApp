@@ -1,10 +1,6 @@
-// File: lib/ui/screens/login_screen.dart
-import 'package:email_validator/email_validator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../services/database_helper.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/todo_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -17,12 +13,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtl = TextEditingController();
   final _pwdCtl = TextEditingController();
-  AutovalidateMode _autoValidate = AutovalidateMode.disabled;
-
-  String? _validateEmail(String? v) {
-    if (v == null || v.isEmpty) return 'Please enter your email';
-    return EmailValidator.validate(v) ? null : 'Invalid email address';
-  }
 
   @override
   void dispose() {
@@ -31,25 +21,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  void _login() {
+    if (_formKey.currentState!.validate()) {
+      ref
+          .read(authStateProvider.notifier)
+          .login(_emailCtl.text.trim(), _pwdCtl.text.trim());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final primaryBlue = Theme.of(context).colorScheme.primary;
+    // Listen to the auth state to show errors
+    ref.listen<AsyncValue<String?>>(authStateProvider, (_, state) {
+      state.whenOrNull(
+        error: (err, st) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(err.toString())),
+          );
+        },
+      );
+    });
+
+    final authState = ref.watch(authStateProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            autovalidateMode: _autoValidate,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const CircleAvatar(
                   radius: 50,
-                  backgroundImage: AssetImage('assets/login_avatar.png'),
+                  child: Icon(Icons.check, size: 50),
                 ),
+                const SizedBox(height: 24),
+                Text('Welcome to CheckMe',
+                    style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _emailCtl,
@@ -57,8 +67,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(),
                   ),
-                  validator: _validateEmail,
+                  validator: (v) =>
+                  (v == null || v.isEmpty) ? 'Please enter email' : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -67,50 +79,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Password',
                     prefixIcon: Icon(Icons.lock),
+                    border: OutlineInputBorder(),
                   ),
-                  validator: (v) => (v == null || v.length < 6) ? 'Min 6 chars' : null,
+                  validator: (v) => (v == null || v.length < 6)
+                      ? 'Min 6 characters'
+                      : null,
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
+                authState.isLoading
+                    ? const CircularProgressIndicator()
+                    : ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,  // button blue
-                    foregroundColor: Colors.white,  // text white
-                    minimumSize: const Size.fromHeight(48), // full-width
+                    minimumSize: const Size.fromHeight(48),
                   ),
-                  onPressed: () async {
-                    setState(() => _autoValidate = AutovalidateMode.always);
-                    if (_formKey.currentState!.validate()) {
-                      final ok = await DatabaseHelper.instance.login(
-                        _emailCtl.text.trim(),
-                        _pwdCtl.text.trim(),
-                      );
-                      if (ok) {
-                        ref.read(currentUserProvider.notifier).state = _emailCtl.text.trim();
-                        await ref.read(todoListProvider.notifier).loadTodos();
-                        Navigator.pushReplacementNamed(context, '/home');
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Invalid credentials')),
-                        );
-                      }
-                    }
-                  },
+                  onPressed: _login,
                   child: const Text('LOGIN'),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      "Don't have an account?",
-                      style: TextStyle(color: Colors.black),
-                    ),
+                    const Text("Don't have an account?"),
                     TextButton(
-                      onPressed: () => Navigator.pushReplacementNamed(context, '/register'),
-                      child: Text(
-                        'Register',
-                        style: TextStyle(color: primaryBlue),
-                      ),
+                      onPressed: () =>
+                          Navigator.pushReplacementNamed(context, '/register'),
+                      child: const Text('Register'),
                     ),
                   ],
                 ),
@@ -122,3 +115,4 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
+

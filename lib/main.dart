@@ -1,13 +1,28 @@
-import 'package:checkme/ui/screens/RegisterScreen.dart';
-import 'package:checkme/ui/screens/add_todo_screen.dart';
+import 'dart:io';
+import 'package:checkme/ui/screens/auth_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:checkme/ui/screens/login_screen.dart';
 import 'package:checkme/ui/screens/home_screen.dart';
 import 'package:checkme/providers/theme_provider.dart';
+import 'package:checkme/services/notification_service.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'ui/screens/add_todo_screen.dart';
+import 'ui/screens/RegisterScreen.dart';
 
-void main() {
-  runApp(const ProviderScope(child: CheckMeApp()));
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Conditionally initialize FFI for desktop platforms
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+
+  final container = ProviderContainer();
+  await container.read(notificationServiceProvider).init();
+  runApp(UncontrolledProviderScope(container: container, child: const CheckMeApp()));
 }
 
 class CheckMeApp extends ConsumerWidget {
@@ -48,7 +63,7 @@ class CheckMeApp extends ConsumerWidget {
         ),
       ),
       themeMode: themeMode,
-      initialRoute: '/login',
+      home: const AuthWrapper(), // This is the fix for the UI not showing
       routes: {
         '/register': (c) => const RegisterScreen(),
         '/login': (c) => const LoginScreen(),
@@ -56,4 +71,6 @@ class CheckMeApp extends ConsumerWidget {
         '/add':   (c) => const AddTodoScreen(),
       },
     );
-  }}
+  }
+}
+

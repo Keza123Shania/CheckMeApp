@@ -16,7 +16,7 @@ class DatabaseHelper {
   Future<Database> _initDB(String fileName) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, fileName);
-    return await openDatabase(path, version: 1, onCreate: _onCreate);
+    return await openDatabase(path, version: 2, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   Future _onCreate(Database db, int version) async {
@@ -24,13 +24,11 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE users(
         email TEXT PRIMARY KEY,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        name TEXT,
+        avatarUrl TEXT
       )
     ''');
-
-    // Seed dummy users
-    await db.insert('users', {'email':'alice@example.com','password':'wonderland'});
-    await db.insert('users', {'email':'bob@riverpod.dev','password':'provider123'});
 
     // Todos table
     await db.execute('''
@@ -47,6 +45,14 @@ class DatabaseHelper {
     ''');
   }
 
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE users ADD COLUMN name TEXT');
+      await db.execute('ALTER TABLE users ADD COLUMN avatarUrl TEXT');
+    }
+  }
+
+
   // Authentication
   Future<bool> login(String email, String password) async {
     final db = await database;
@@ -57,6 +63,22 @@ class DatabaseHelper {
     );
     return res.isNotEmpty;
   }
+
+  // User CRUD
+  Future<Map<String, dynamic>?> getUser(String email) async {
+    final db = await database;
+    final res = await db.query('users', where: 'email = ?', whereArgs: [email]);
+    if (res.isNotEmpty) {
+      return res.first;
+    }
+    return null;
+  }
+
+  Future<void> updateUser(Map<String, dynamic> user) async {
+    final db = await database;
+    await db.update('users', user, where: 'email = ?', whereArgs: [user['email']]);
+  }
+
 
   // Todos CRUD
   Future<List<Map<String,Object?>>> fetchTodos(String userEmail) async {
@@ -72,7 +94,7 @@ class DatabaseHelper {
   Future<bool> insertUser(String email, String password) async {
     final db = await database;
     try {
-      await db.insert('users', {'email': email, 'password': password});
+      await db.insert('users', {'email': email, 'password': password, 'name': 'New User'});
       return true;
     } catch (e) {
       // likely a UNIQUE constraint failure for existing email
@@ -93,3 +115,4 @@ class DatabaseHelper {
     await db.delete('todos', where: 'id = ?', whereArgs: [id]);
   }
 }
+

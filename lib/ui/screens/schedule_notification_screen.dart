@@ -42,13 +42,7 @@ class _AddTodoScreenState extends ConsumerState<AddTodoScreen> {
 
   void _save() {
     if (_formKey.currentState!.validate()) {
-      // Get user email correctly from the new auth provider's value
-      final userEmail = ref.read(authStateProvider).value;
-      if (userEmail == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Not logged in')));
-        return;
-      }
-
+      final userEmail = ref.read(authStateProvider).value!;
       final todo = Todo(
         title: _titleCtl.text,
         description: _descCtl.text,
@@ -58,7 +52,7 @@ class _AddTodoScreenState extends ConsumerState<AddTodoScreen> {
       );
       ref.read(todoListProvider.notifier).addTodo(todo);
 
-      if (_scheduleNotification && todo.dueDate != null) {
+      if (_scheduleNotification) {
         ref.read(notificationServiceProvider).scheduleTodoNotification(todo);
       }
       Navigator.pop(context);
@@ -92,7 +86,7 @@ class _AddTodoScreenState extends ConsumerState<AddTodoScreen> {
                 children: [
                   ElevatedButton(onPressed: _pickDate, child: const Text('Pick Due Date')),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(_due == null ? 'No date chosen' : _due!.toLocal().toString().split('.')[0])),
+                  Text(_due == null ? 'No date chosen' : _due!.toLocal().toString().split('.')[0]),
                 ],
               ),
               if (_due != null)
@@ -121,4 +115,3 @@ class _AddTodoScreenState extends ConsumerState<AddTodoScreen> {
     );
   }
 }
-
