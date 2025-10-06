@@ -63,8 +63,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // FIX: Access the entire MaterialColor swatch directly for shading
-    final MaterialColor babyBlueSwatch = CheckMeApp.babyBlue;
     final Color primaryColor = Theme.of(context).colorScheme.primary;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -99,28 +97,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Illustration Placeholder
-                    Image.asset('assets/login_avatar.png', height: 120),
-                    const SizedBox(height: 20),
+                    Image.asset('assets/login_avatar.png', height: 150, fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Icon(Icons.person_pin_circle_outlined, size: 80, color: Colors.white), // Fallback
+                    ),
+                    const SizedBox(height: 10),
                     RichText(
                       textAlign: TextAlign.center,
                       text: TextSpan(
-                        text: 'Let\'s create a ',
+                        text: 'Welcome back to ',
                         style: Theme.of(context).textTheme.headlineSmall!.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.normal,
                         ),
                         children: [
                           TextSpan(
-                            // FIX: Use the babyBlueSwatch to access shade100
-                            text: 'space',
+                            text: 'CheckMe',
                             style: TextStyle(
-                              color: babyBlueSwatch.shade900,
-                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : Colors.white70,
+                              fontWeight: FontWeight.w900,
                               fontSize: Theme.of(context).textTheme.headlineSmall!.fontSize,
                             ),
                           ),
                           TextSpan(
-                            text: ' for your workflows.',
+                            text: '!',
                             style: Theme.of(context).textTheme.headlineSmall!.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.normal,
@@ -146,6 +146,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   topLeft: Radius.circular(40),
                   topRight: Radius.circular(40),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
               ),
               child: SingleChildScrollView(
                 child: Form(
@@ -153,29 +160,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Login Title Area
-                      Text(
-                        'Don\'t have an account?',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pushReplacementNamed('/register'),
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                        child: Text(
-                          'Sign Up',
-                          style: TextStyle(color: primaryColor, fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
+                      // --- Form Fields (Moved to Top) ---
 
                       // Form Fields
                       TextFormField(
                         controller: _emailCtl,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Email Address',
-                          prefixIcon: Icon(Icons.email_rounded),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                          prefixIcon: const Icon(Icons.email_rounded),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         validator: (v) =>
                         (v == null || v.isEmpty) ? 'Please enter email' : null,
@@ -187,7 +181,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         decoration: InputDecoration(
                           labelText: 'Password',
                           prefixIcon: const Icon(Icons.lock_rounded),
-                          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           // Password Visibility Toggle
                           suffixIcon: IconButton(
                             icon: Icon(_isObscure ? Icons.visibility : Icons.visibility_off, color: primaryColor),
@@ -205,12 +199,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: _launchEmail,
-                          child: const Text('Forgot Password?', style: TextStyle(fontWeight: FontWeight.w500)),
+                          child: Text('Forgot Password?', style: TextStyle(fontWeight: FontWeight.w500, color: primaryColor)),
                         ),
                       ),
                       const SizedBox(height: 16),
 
-                      // Login Button
+                      // Login Button (Primary Action)
                       authState.isLoading
                           ? Center(child: CircularProgressIndicator(color: primaryColor))
                           : ElevatedButton(
@@ -219,10 +213,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 4,
                         ),
                         onPressed: _login,
                         child: const Text('LOGIN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
+                      const SizedBox(height: 32),
+
+                      // Divider "OR" (Moved to follow the Login button)
+                      Row(
+                        children: [
+                          const Expanded(child: Divider(thickness: 1, height: 1)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            // Updated text to reflect social login options are next
+                            child: Text("OR USE SOCIAL LOGIN", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                          ),
+                          const Expanded(child: Divider(thickness: 1, height: 1)),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Social Login Icons (Moved to follow the Divider)
+                      _SocialLoginIcons(primaryColor: primaryColor),
+                      const SizedBox(height: 32),
+
+                      // Navigation Footer (Remains at bottom)
+                      _NavigationFooter(
+                        question: "Don't have an account?",
+                        actionText: "Sign Up",
+                        onTap: () => Navigator.of(context).pushReplacementNamed('/register'),
+                        primaryColor: primaryColor,
+                      ),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -231,6 +254,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Helper Widget for Social Login Icons
+class _SocialLoginIcons extends StatelessWidget {
+  final Color primaryColor;
+  const _SocialLoginIcons({required this.primaryColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Google Icon
+        _buildSocialButton(
+          Icons.email_rounded, // Using email icon as a stand-in for Google, usually a custom icon
+          Colors.red,
+              () {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Google Login clicked (TBD)')));
+          },
+        ),
+        const SizedBox(width: 20),
+        // Facebook Icon
+        _buildSocialButton(
+          Icons.facebook_rounded,
+          Colors.blue.shade800,
+              () {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Facebook Login clicked (TBD)')));
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSocialButton(IconData icon, Color iconColor, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(50),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300, width: 1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 28, color: iconColor),
+      ),
+    );
+  }
+}
+
+// Helper Widget for Navigation Footer
+class _NavigationFooter extends StatelessWidget {
+  final String question;
+  final String actionText;
+  final VoidCallback onTap;
+  final Color primaryColor;
+  const _NavigationFooter({
+    required this.question,
+    required this.actionText,
+    required this.onTap,
+    required this.primaryColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          question,
+          style: TextStyle(color: Colors.grey.shade600),
+        ),
+        TextButton(
+          onPressed: onTap,
+          child: Text(
+            actionText,
+            style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -276,7 +276,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // --- Overall Completion Card ---
+              // --- Overall Completion Card (FIX APPLIED HERE) ---
               Card(
                 color: isDark ? Colors.grey.shade800 : Colors.white,
                 elevation: 4,
@@ -288,7 +288,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     children: [
                       Text('Overall Completion', style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 16),
-                      // Circular Progress Indicator
+
+                      // Fix 1: Use proper alignment to prevent overlap
                       Center(
                         child: SizedBox(
                           width: 150,
@@ -297,34 +298,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             alignment: Alignment.center,
                             children: [
                               // Progress Indicator (Background and foreground arc)
-                              CircularProgressIndicator(
-                                value: completionRate,
-                                strokeWidth: 10,
-                                backgroundColor: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                              SizedBox( // Explicit size for the indicator
+                                width: 150,
+                                height: 150,
+                                child: CircularProgressIndicator(
+                                  value: completionRate,
+                                  strokeWidth: 10,
+                                  backgroundColor: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                                ),
                               ),
 
-                              // Text OVER the Indicator (Fix)
-                              // CRITICAL FIX: Use Positioned.fill(child: Center(...)) to guarantee center alignment
-                              // regardless of the parent widget's dimensions, fixing the overlap.
-                              Positioned.fill(
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        '${(completionRate * 100).toStringAsFixed(0)}%',
-                                        style: Theme.of(context).textTheme.headlineMedium!.copyWith(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 32),
-                                      ),
-                                      Text('Completed', style: Theme.of(context).textTheme.bodySmall),
-                                    ],
+                              // Text positioned exactly in the center of the stack
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${(completionRate * 100).toStringAsFixed(0)}%',
+                                    style: Theme.of(context).textTheme.headlineMedium!.copyWith(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 32),
                                   ),
-                                ),
+                                  Text('Completed', style: Theme.of(context).textTheme.bodySmall),
+                                ],
                               )
                             ],
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 24),
                       Text('Task Breakdown', style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),

@@ -75,7 +75,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     // FIX: Access the entire MaterialColor swatch directly for shading
-    final MaterialColor babyBlueSwatch = CheckMeApp.babyBlue;
     final Color primaryColor = Theme.of(context).colorScheme.primary;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -93,7 +92,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Illustration Placeholder
-                    Image.asset('assets/login_avatar.png', height: 120),
+                    Image.asset('assets/login_avatar.png', height: 120, fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Icon(Icons.person_add_alt_1_outlined, size: 80, color: Colors.white), // Fallback
+                    ),
                     const SizedBox(height: 20),
                     RichText(
                       textAlign: TextAlign.center,
@@ -105,10 +107,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         children: [
                           TextSpan(
-                            // FIX: Use the babyBlueSwatch to access shade100
+                            // FIX: Use the babyBlueSwatch to access shade900 for emphasis
                             text: 'space',
                             style: TextStyle(
-                              color: babyBlueSwatch.shade900,
+                              color: isDark ? Colors.grey.shade200 : CheckMeApp.babyBlue.shade900,
                               fontWeight: FontWeight.w800,
                               fontSize: Theme.of(context).textTheme.headlineSmall!.fontSize,
                             ),
@@ -140,6 +142,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   topLeft: Radius.circular(40),
                   topRight: Radius.circular(40),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
               ),
               child: SingleChildScrollView(
                 child: Form(
@@ -147,29 +156,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Sign Up Title Area
-                      Text(
-                        'Already have an account?',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pushReplacementNamed('/login'),
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                        child: Text(
-                          'Login',
-                          style: TextStyle(color: primaryColor, fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Form Fields
+                      // --- Form Fields (Email, Password, Confirm) ---
                       TextFormField(
                         controller: _emailCtl,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Email Address',
-                          prefixIcon: Icon(Icons.email_rounded),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                          prefixIcon: const Icon(Icons.email_rounded),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         validator: _validateEmail,
                       ),
@@ -205,7 +199,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Register Button
+                      // Register Button (Primary Action)
                       _isRegistering
                           ? Center(child: CircularProgressIndicator(color: primaryColor))
                           : ElevatedButton(
@@ -214,10 +208,40 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 4,
                         ),
                         onPressed: _register,
                         child: const Text('SIGN UP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
+
+                      const SizedBox(height: 32),
+
+                      // Divider "OR" (Moved to follow the Register button)
+                      Row(
+                        children: [
+                          const Expanded(child: Divider(thickness: 1, height: 1)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            // Updated text to reflect social login options are next
+                            child: Text("OR USE SOCIAL LOGIN", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                          ),
+                          const Expanded(child: Divider(thickness: 1, height: 1)),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Social Login Icons (Moved to follow the Divider)
+                      _SocialLoginIcons(primaryColor: primaryColor),
+                      const SizedBox(height: 32),
+
+                      // Navigation Footer (Remains at bottom)
+                      _NavigationFooter(
+                        question: "Already have an account?",
+                        actionText: "Login",
+                        onTap: () => Navigator.of(context).pushReplacementNamed('/login'),
+                        primaryColor: primaryColor,
+                      ),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -226,6 +250,87 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Helper Widget for Social Login Icons (Reused in Login/Register)
+class _SocialLoginIcons extends StatelessWidget {
+  final Color primaryColor;
+  const _SocialLoginIcons({required this.primaryColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Google Icon
+        _buildSocialButton(
+          Icons.email_rounded, // Using email icon as a stand-in for Google, usually a custom icon
+          Colors.red,
+              () {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Google Login clicked (TBD)')));
+          },
+        ),
+        const SizedBox(width: 20),
+        // Facebook Icon
+        _buildSocialButton(
+          Icons.facebook_rounded,
+          Colors.blue.shade800,
+              () {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Facebook Login clicked (TBD)')));
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSocialButton(IconData icon, Color iconColor, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(50),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300, width: 1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 28, color: iconColor),
+      ),
+    );
+  }
+}
+
+// Helper Widget for Navigation Footer (Reused in Login/Register)
+class _NavigationFooter extends StatelessWidget {
+  final String question;
+  final String actionText;
+  final VoidCallback onTap;
+  final Color primaryColor;
+  const _NavigationFooter({
+    required this.question,
+    required this.actionText,
+    required this.onTap,
+    required this.primaryColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          question,
+          style: TextStyle(color: Colors.grey.shade600),
+        ),
+        TextButton(
+          onPressed: onTap,
+          child: Text(
+            actionText,
+            style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
     );
   }
 }
