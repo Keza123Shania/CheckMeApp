@@ -1,5 +1,3 @@
-import 'package:uuid/uuid.dart';
-
 class User {
   String name;
   final String email;
@@ -11,15 +9,14 @@ class User {
     this.avatarUrl,
   });
 
-  // FIX: Added copyWith method to support non-destructive updates (like avatar upload)
+  // Fix: Add copyWith for easy state updates
   User copyWith({
     String? name,
-    String? email,
     String? avatarUrl,
   }) {
     return User(
       name: name ?? this.name,
-      email: email ?? this.email,
+      email: this.email,
       avatarUrl: avatarUrl ?? this.avatarUrl,
     );
   }

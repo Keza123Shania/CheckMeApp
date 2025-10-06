@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
+import '../../main.dart'; // Import main.dart to access babyBlue swatch
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -14,16 +15,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailCtl = TextEditingController();
   final _pwdCtl = TextEditingController();
   final _confirmCtl = TextEditingController();
+  bool _isObscurePwd = true;
+  bool _isObscureConfirm = true;
   bool _isRegistering = false;
-
-  // UX: State for password visibility
-  bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
 
   String? _validateEmail(String? v) {
     if (v == null || v.isEmpty) return 'Please enter your email';
     const pattern = r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$';
-    return RegExp(pattern).hasMatch(v) ? null : 'Invalid email';
+    return RegExp(pattern).hasMatch(v) ? null : 'Invalid email format';
   }
 
   String? _validatePassword(String? v) {
@@ -38,28 +37,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           .showSnackBar(const SnackBar(content: Text("Passwords don't match")));
       return;
     }
+
     setState(() => _isRegistering = true);
     try {
-      // 🚨 CRITICAL FIX: Await the registration call
       await ref.read(authStateProvider.notifier).register(
         _emailCtl.text.trim(),
         _pwdCtl.text,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registered! Please log in.')));
+            const SnackBar(content: Text('Registration successful! Please log in.')));
 
-        // Navigation back to login is safe and required here
-        Navigator.pushReplacementNamed(context, '/login');
+        // Safety net: Navigate back to login immediately after registration success
+        Navigator.of(context).pushReplacementNamed('/login');
       }
     } catch (e) {
       if (mounted) {
-        // Use a more user-friendly message for common errors
-        final errorMessage = e.toString().contains('already exists')
-            ? 'Registration failed: Email already in use.'
-            : 'Registration failed: $e';
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(errorMessage)));
+        // Display specific error message if available
+        final errorMessage = e.toString().contains('exists') ? 'Registration failed: Email already in use.' : 'Registration failed.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } finally {
       if (mounted) {
@@ -78,52 +74,52 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // FIX: Access the entire MaterialColor swatch directly for shading
+    final MaterialColor babyBlueSwatch = CheckMeApp.babyBlue;
+    final Color primaryColor = Theme.of(context).colorScheme.primary;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: primaryColor, // Set background to primary color
+      backgroundColor: primaryColor,
       body: Column(
         children: [
-          // Top Header Area with Illustration
+          // Top Colored Section with Illustration
           Expanded(
-            flex: 2,
+            flex: 1,
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.only(top: 40.0, bottom: 20.0),
+                padding: const EdgeInsets.symmetric(horizontal: 40.0),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Illustration Image Asset
-                    Container(
-                      height: 150, // Control the size of the image container
-                      width: 150,
-                      child: Image.asset(
-                        'assets/login_illustration.png', // Placeholder
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Icon(Icons.person_add, size: 70, color: Colors.white.withOpacity(0.8)), // Fallback icon
-                      ),
-                    ),
+                    // Illustration Placeholder
+                    Image.asset('assets/login_avatar.png', height: 120),
                     const SizedBox(height: 20),
-                    // Title Text
                     RichText(
+                      textAlign: TextAlign.center,
                       text: TextSpan(
-                        text: "Let's create a ",
-                        style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                          fontWeight: FontWeight.w600,
+                        text: 'Let\'s create a ',
+                        style: Theme.of(context).textTheme.headlineSmall!.copyWith(
                           color: Colors.white,
+                          fontWeight: FontWeight.normal,
                         ),
                         children: [
                           TextSpan(
+                            // FIX: Use the babyBlueSwatch to access shade100
                             text: 'space',
                             style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              color: primaryColor,
-                              fontSize: 32,
+                              color: babyBlueSwatch.shade900,
+                              fontWeight: FontWeight.w800,
+                              fontSize: Theme.of(context).textTheme.headlineSmall!.fontSize,
                             ),
                           ),
-                          const TextSpan(text: ' for your workflows.'),
+                          TextSpan(
+                            text: ' for your workflows.',
+                            style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -133,105 +129,79 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ),
 
-          // Bottom Registration Form Area (White, Rounded Card)
+          // Bottom Form Section
           Expanded(
-            flex: 4, // More space for the registration form
+            flex: 2,
             child: Container(
               padding: const EdgeInsets.all(24.0),
               decoration: BoxDecoration(
                 color: isDark ? Colors.grey.shade900 : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(40),
+                  topRight: Radius.circular(40),
+                ),
               ),
               child: SingleChildScrollView(
                 child: Form(
                   key: _formKey,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // NEW UX: Login link positioned above the title
+                      // Sign Up Title Area
+                      Text(
+                        'Already have an account?',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pushReplacementNamed('/login'),
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        child: Text(
+                          'Login',
+                          style: TextStyle(color: primaryColor, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
-                      const SizedBox(height: 8),
-                      // NEW UX: Title alignment and styling
-                      Text('Sign Up', style: Theme.of(context).textTheme.headlineLarge!.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 24),
-
-                      // Email Field
+                      // Form Fields
                       TextFormField(
                         controller: _emailCtl,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: const Icon(Icons.email_rounded),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+                        decoration: const InputDecoration(
+                          labelText: 'Email Address',
+                          prefixIcon: Icon(Icons.email_rounded),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                         ),
                         validator: _validateEmail,
                       ),
                       const SizedBox(height: 16),
-
-                      // Password Field with Visibility Toggle
                       TextFormField(
                         controller: _pwdCtl,
-                        obscureText: !_isPasswordVisible, // Use visibility state
+                        obscureText: _isObscurePwd,
                         decoration: InputDecoration(
-                          labelText: 'Password',
+                          labelText: 'Password (min 6 chars)',
                           prefixIcon: const Icon(Icons.lock_rounded),
-                          // NEW UX: Visibility toggle icon
+                          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                           suffixIcon: IconButton(
-                            icon: Icon(
-                              _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isPasswordVisible = !_isPasswordVisible;
-                              });
-                            },
+                            icon: Icon(_isObscurePwd ? Icons.visibility : Icons.visibility_off, color: primaryColor),
+                            onPressed: () => setState(() => _isObscurePwd = !_isObscurePwd),
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
                         ),
                         validator: _validatePassword,
                       ),
                       const SizedBox(height: 16),
-
-                      // Confirm Password Field with Visibility Toggle
                       TextFormField(
                         controller: _confirmCtl,
-                        obscureText: !_isConfirmPasswordVisible, // Use visibility state
+                        obscureText: _isObscureConfirm,
                         decoration: InputDecoration(
                           labelText: 'Confirm Password',
                           prefixIcon: const Icon(Icons.lock_outline_rounded),
-                          // NEW UX: Visibility toggle icon
+                          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                           suffixIcon: IconButton(
-                            icon: Icon(
-                              _isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                              });
-                            },
+                            icon: Icon(_isObscureConfirm ? Icons.visibility : Icons.visibility_off, color: primaryColor),
+                            onPressed: () => setState(() => _isObscureConfirm = !_isObscureConfirm),
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
                         ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Please confirm your password';
-                          if (v != _pwdCtl.text) return 'Passwords do not match';
-                          return null;
-                        },
+                        validator: _validatePassword,
                       ),
                       const SizedBox(height: 24),
 
@@ -240,50 +210,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ? Center(child: CircularProgressIndicator(color: primaryColor))
                           : ElevatedButton(
                         style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(55),
                           backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(55),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          elevation: 4,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _register,
-                        child: const Text('REGISTER', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(height: 20),
-                      // Social Login Separator
-                      Row(
-                        children: [
-                          const Expanded(child: Divider()),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: Text('or SignUp with', style: TextStyle(color: Colors.grey.shade600)),
-                          ),
-                          const Expanded(child: Divider()),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Social Login Icons (Placeholder)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildSocialButton(Icons.g_mobiledata_rounded, 'Google', Colors.black, context),
-                          const SizedBox(width: 16),
-                          _buildSocialButton(Icons.facebook_rounded, 'Apple', Colors.blue, context),
-                        ],
-                      ),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('Already have an account?'),
-                          TextButton(
-                            // FIX: Use pushReplacementNamed to /login
-                            onPressed: () =>
-                                Navigator.pushReplacementNamed(context, '/login'),
-                            child: Text('Login', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
+                        child: const Text('SIGN UP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -295,16 +228,4 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
     );
   }
-  Widget _buildSocialButton(IconData icon, String label, Color color, BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade300),
-        color: Colors.white,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-      child: Icon(icon, color: color, size: 28),
-    );
-  }
 }
-

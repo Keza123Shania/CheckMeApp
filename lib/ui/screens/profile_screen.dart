@@ -1,79 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/user.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../providers/auth_provider.dart'; // Import Auth Provider
-import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // For clear all
-import '../../providers/todo_provider.dart'; // For clear all
-import 'package:image_picker/image_picker.dart';
-
-import 'home_screen.dart';
-
-// Helper widget to display progress (for overall completion)
-class CompletionProgressCard extends ConsumerWidget {
-  final double completionRate;
-  const CompletionProgressCard({super.key, required this.completionRate});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final cardColor = isDark ? Colors.grey.shade800 : Colors.white;
-
-    return Card(
-      color: cardColor,
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Overall Completion', style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 16),
-            // Circular Progress Indicator for high-impact visual
-            Center(
-              child: SizedBox(
-                width: 150,
-                height: 150,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: completionRate,
-                      strokeWidth: 8,
-                      backgroundColor: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                    ),
-                    // CRUCIAL FIX: Ensure percentage text is nested inside Stack for proper overlay
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '${(completionRate * 100).toStringAsFixed(0)}%',
-                          style: Theme.of(context).textTheme.headlineMedium!.copyWith(fontWeight: FontWeight.bold, color: primaryColor),
-                        ),
-                        Text('Completed', style: Theme.of(context).textTheme.bodySmall),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text('Task Breakdown', style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            // Embed the Stats Card for more detail
-            // Note: TodoStatsCard must be imported or defined in home_screen.dart
-            const TodoStatsCard(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+import '../../providers/todo_provider.dart'; // Needed for clearAll
+import 'home_screen.dart'; // Needed for TodoStatsCard
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -83,100 +17,34 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final _nameController = TextEditingController();
+  late TextEditingController _nameController;
   final ImagePicker _picker = ImagePicker();
+
+  // Password controllers for the Change Password dialog
+  final _oldPwdCtl = TextEditingController();
+  final _newPwdCtl = TextEditingController();
+  final _confirmPwdCtl = TextEditingController();
+  bool _isObscureOld = true;
+  bool _isObscureNew = true;
+  bool _isObscureConfirm = true;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _oldPwdCtl.dispose();
+    _newPwdCtl.dispose();
+    _confirmPwdCtl.dispose();
     super.dispose();
   }
 
-  // --- Password Edit Logic ---
-
-  void _showEditPasswordDialog(String email) {
-    final formKey = GlobalKey<FormState>();
-    final oldPwdCtl = TextEditingController();
-    final newPwdCtl = TextEditingController();
-    final confirmPwdCtl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Change Password'),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: oldPwdCtl,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Current Password'),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: newPwdCtl,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'New Password (Min 6 chars)'),
-                    validator: (v) => (v == null || v.length < 6) ? 'Must be at least 6 characters' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: confirmPwdCtl,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Confirm New Password'),
-                    validator: (v) {
-                      if (v != newPwdCtl.text) return 'Passwords do not match';
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-
-                try {
-                  // Call the provider to update the password
-                  await ref.read(authStateProvider.notifier).updatePassword(
-                    email,
-                    oldPwdCtl.text,
-                    newPwdCtl.text,
-                  );
-                  if (mounted) {
-                    Navigator.pop(context); // Close dialog
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Password updated successfully!')),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.toString())),
-                    );
-                  }
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // --- Name Edit Logic ---
+  // --- UI DIALOGS ---
 
   void _showEditNameDialog(User currentUser) {
     _nameController.text = currentUser.name;
@@ -198,10 +66,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ElevatedButton(
               onPressed: () {
                 if (_nameController.text.isNotEmpty) {
-                  final updatedUser = User(
-                    email: currentUser.email,
-                    name: _nameController.text.trim(),
-                    avatarUrl: currentUser.avatarUrl,
+                  final updatedUser = currentUser.copyWith(
+                    name: _nameController.text,
                   );
                   ref.read(userProvider.notifier).updateUser(updatedUser);
                   Navigator.pop(context);
@@ -215,112 +81,128 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // --- Image Picker Logic ---
-  Future<void> _pickImage(ImageSource source, User currentUser) async {
-    try {
-      final XFile? image = await _picker.pickImage(source: source);
-      if (image != null) {
-        // In a real app, you would upload this image to storage (like Firebase Storage or S3)
-        // and get a public URL back. For this local DB app, we'll just save the path/name
-        // or a mock URL to simulate success.
+  void _showEditPasswordDialog(BuildContext context, String userEmail) {
+    _oldPwdCtl.clear();
+    _newPwdCtl.clear();
+    _confirmPwdCtl.clear();
 
-        // Since we cannot rely on local file paths persisting across platforms
-        // in a non-production setup, we'll just update the user model with a mock
-        // success state related to the pick.
-        final mockAvatarUrl = 'assets/avatar_success.png';
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (stfContext, stfSetState) {
+            final primaryColor = Theme.of(context).colorScheme.primary;
+            return AlertDialog(
+              title: const Text('Change Password'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: _oldPwdCtl,
+                      obscureText: _isObscureOld,
+                      decoration: InputDecoration(
+                        labelText: 'Old Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(_isObscureOld ? Icons.visibility : Icons.visibility_off, color: primaryColor),
+                          onPressed: () => stfSetState(() => _isObscureOld = !_isObscureOld),
+                        ),
+                      ),
+                    ),
+                    TextFormField(
+                      controller: _newPwdCtl,
+                      obscureText: _isObscureNew,
+                      decoration: InputDecoration(
+                        labelText: 'New Password (min 6 chars)',
+                        suffixIcon: IconButton(
+                          icon: Icon(_isObscureNew ? Icons.visibility : Icons.visibility_off, color: primaryColor),
+                          onPressed: () => stfSetState(() => _isObscureNew = !_isObscureNew),
+                        ),
+                      ),
+                    ),
+                    TextFormField(
+                      controller: _confirmPwdCtl,
+                      obscureText: _isObscureConfirm,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm New Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(_isObscureConfirm ? Icons.visibility : Icons.visibility_off, color: primaryColor),
+                          onPressed: () => stfSetState(() => _isObscureConfirm = !_isObscureConfirm),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_newPwdCtl.text.length < 6) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New password must be at least 6 characters.')));
+                      return;
+                    }
+                    if (_newPwdCtl.text != _confirmPwdCtl.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New passwords do not match.')));
+                      return;
+                    }
 
-        final updatedUser = currentUser.copyWith(
-          name: currentUser.name,
-          email: currentUser.email,
-          avatarUrl: mockAvatarUrl, // Use a fixed mock URL/path for success
+                    try {
+                      await ref.read(authStateProvider.notifier).changePassword(
+                        _oldPwdCtl.text,
+                        _newPwdCtl.text,
+                      );
+                      if (stfContext.mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully!')));
+                      }
+                    } catch (e) {
+                      if (stfContext.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('incorrect') ? 'Incorrect old password.' : 'Failed to update password.')));
+                      }
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
+      },
+    );
+  }
 
+  // --- IMAGE PICKING ---
+
+  Future<void> _pickImage(User currentUser) async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        final updatedUser = currentUser.copyWith(avatarUrl: image.path);
         await ref.read(userProvider.notifier).updateUser(updatedUser);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile picture updated successfully!')),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile picture updated successfully!')));
         }
       }
     } catch (e) {
-      // Catch platform errors (like permissions denied or unsupported platform)
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image picking failed: $e')));
       }
     }
   }
 
-  void _showImageSourceActionSheet(User currentUser) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Photo Library'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery, currentUser);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Camera'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera, currentUser);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- Settings/Actions Logic ---
-
-  void _showClearAllTodosConfirmation() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear All Tasks?'),
-        content: const Text('Are you sure you want to delete all your tasks? This action is irreversible.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(todoListProvider.notifier).clearAll();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('All tasks cleared!')),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete All', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // --- UI BUILDER METHODS ---
 
   @override
   Widget build(BuildContext context) {
     final userAsyncValue = ref.watch(userProvider);
     final themeMode = ref.watch(themeModeProvider);
     final todoState = ref.watch(todoListProvider);
-    final totalTodos = todoState.valueOrNull?.length ?? 0;
-    final completedTodos = todoState.valueOrNull?.where((t) => t.isDone).length ?? 0;
-    final completionRate = totalTodos > 0 ? completedTodos / totalTodos : 0.0;
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? Colors.grey.shade800 : Colors.white;
 
     return Scaffold(
       appBar: AppBar(
@@ -333,29 +215,56 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             return const Center(child: Text('Not logged in.'));
           }
 
+          final totalTasks = todoState.valueOrNull?.length ?? 0;
+          final completedTasks = todoState.valueOrNull?.where((t) => t.isDone).length ?? 0;
+          final completionRate = totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
+
+          // Determine avatar display
+          ImageProvider avatarImage;
+          if (user.avatarUrl != null && File(user.avatarUrl!).existsSync()) {
+            // Fix: Use FileImage for local file paths
+            avatarImage = FileImage(File(user.avatarUrl!));
+          } else {
+            avatarImage = const AssetImage('assets/login_avatar.png'); // Placeholder/Default
+          }
+
+
           return ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
-              // --- User Profile Card ---
+              // --- Profile Header ---
               Center(
                 child: Column(
                   children: [
-                    GestureDetector(
-                      onTap: () => _showImageSourceActionSheet(user),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                        // Display the avatar if a URL exists, otherwise show placeholder
-                        child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                            ? const Icon(Icons.check_circle, size: 50, color: Colors.green) // Mock success icon
-                            : Icon(Icons.person, size: 50, color: Theme.of(context).colorScheme.primary.withOpacity(0.6)),
-                      ),
+                    Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundImage: avatarImage,
+                          backgroundColor: primaryColor.withOpacity(0.2),
+                          child: user.avatarUrl == null
+                              ? Icon(Icons.person, size: 50, color: primaryColor)
+                              : null,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: InkWell(
+                            onTap: () => _pickImage(user),
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: primaryColor,
+                              child: const Icon(Icons.edit, size: 18, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     Text(user.name,
-                        style: Theme.of(context).textTheme.headlineSmall),
+                        style: Theme.of(context).textTheme.headlineSmall!.copyWith(fontWeight: FontWeight.bold)),
                     Text(user.email,
-                        style: Theme.of(context).textTheme.bodyMedium),
+                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Colors.grey.shade600)),
                     TextButton.icon(
                       onPressed: () => _showEditNameDialog(user),
                       icon: const Icon(Icons.edit, size: 18),
@@ -367,95 +276,135 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // --- Progress Overview Card ---
-              CompletionProgressCard(completionRate: completionRate),
-
-              const SizedBox(height: 24),
-
-              Text('Account Settings', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-
-              // --- Change Password Tile ---
+              // --- Overall Completion Card ---
               Card(
-                color: cardColor,
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  leading: const Icon(Icons.lock_outline_rounded),
-                  title: const Text('Change Password'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showEditPasswordDialog(user.email),
-                ),
-              ),
-              const SizedBox(height: 8),
+                color: isDark ? Colors.grey.shade800 : Colors.white,
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Overall Completion', style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 16),
+                      // Circular Progress Indicator
+                      Center(
+                        child: SizedBox(
+                          width: 150,
+                          height: 150,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Progress Indicator (Background and foreground arc)
+                              CircularProgressIndicator(
+                                value: completionRate,
+                                strokeWidth: 10,
+                                backgroundColor: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                              ),
 
-              // --- Theme Settings Tile ---
-              Card(
-                color: cardColor,
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  leading: const Icon(Icons.palette_outlined),
-                  title: const Text('App Theme'),
-                  trailing: DropdownButton<ThemeMode>(
-                    value: themeMode,
-                    items: const [
-                      DropdownMenuItem(
-                        value: ThemeMode.system,
-                        child: Text('System'),
+                              // Text OVER the Indicator (Fix)
+                              // CRITICAL FIX: Use Positioned.fill(child: Center(...)) to guarantee center alignment
+                              // regardless of the parent widget's dimensions, fixing the overlap.
+                              Positioned.fill(
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '${(completionRate * 100).toStringAsFixed(0)}%',
+                                        style: Theme.of(context).textTheme.headlineMedium!.copyWith(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 32),
+                                      ),
+                                      Text('Completed', style: Theme.of(context).textTheme.bodySmall),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            ],
+                          ),
+                        ),
                       ),
-                      DropdownMenuItem(
-                        value: ThemeMode.light,
-                        child: Text('Light'),
-                      ),
-                      DropdownMenuItem(
-                        value: ThemeMode.dark,
-                        child: Text('Dark'),
-                      ),
+                      const SizedBox(height: 24),
+                      Text('Task Breakdown', style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      // Embed the Stats Card for more detail
+                      todoState.isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : const TodoStatsCard(),
                     ],
-                    onChanged: (mode) {
-                      if (mode != null) {
-                        ref.read(themeModeProvider.notifier).state = mode;
-                      }
-                    },
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
 
-              // --- Danger Zone ---
-              Text('Danger Zone', style: Theme.of(context).textTheme.titleLarge!.copyWith(color: Colors.red)),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 8),
+              // --- Settings Section ---
+              Text('Account & Security', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
 
-              // Clear All Todos
-              Card(
-                color: cardColor,
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  leading: Icon(Icons.clear_all_rounded, color: Colors.red.shade400),
-                  title: Text('Clear All Tasks', style: TextStyle(color: Colors.red.shade400)),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: _showClearAllTodosConfirmation,
+              // Change Password Tile (New Feature)
+              ListTile(
+                leading: const Icon(Icons.lock_open_rounded),
+                title: const Text('Change Password'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showEditPasswordDialog(context, user.email),
+              ),
+
+              // Theme Selector Tile
+              ListTile(
+                leading: const Icon(Icons.palette_outlined),
+                title: const Text('App Theme'),
+                trailing: DropdownButton<ThemeMode>(
+                  value: themeMode,
+                  items: const [
+                    DropdownMenuItem(
+                      value: ThemeMode.system,
+                      child: Text('System Default'),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.light,
+                      child: Text('Light Mode'),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.dark,
+                      child: Text('Dark Mode'),
+                    ),
+                  ],
+                  onChanged: (mode) {
+                    if (mode != null) {
+                      ref.read(themeModeProvider.notifier).state = mode;
+                    }
+                  },
                 ),
               ),
-              const SizedBox(height: 24),
 
-              // Logout Button
-              ElevatedButton.icon(
-                onPressed: () {
-                  ref.read(authStateProvider.notifier).logout();
-                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+              // Clear All Todos Tile
+              ListTile(
+                leading: const Icon(Icons.delete_sweep_rounded, color: Colors.red),
+                title: const Text('Clear All Todos', style: TextStyle(color: Colors.red)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  await showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Confirm Deletion'),
+                      content: const Text('Are you sure you want to delete ALL your todos? This cannot be undone.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                        ElevatedButton(
+                          onPressed: () {
+                            ref.read(todoListProvider.notifier).clearAll();
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                          child: const Text('Delete All'),
+                        ),
+                      ],
+                    ),
+                  );
                 },
-                icon: const Icon(Icons.logout),
-                label: const Text('LOGOUT'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
-                  foregroundColor: isDark ? Colors.white : Colors.black87,
-                  minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 2,
-                ),
               ),
             ],
           );

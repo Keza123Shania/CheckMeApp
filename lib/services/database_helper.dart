@@ -67,27 +67,32 @@ class DatabaseHelper {
     return isValid;
   }
 
-  // NEW FEATURE: Password Update
-  // Checks old password against database and updates with new password.
-  Future<void> updateUserPassword(String email, String oldPassword, String newPassword) async {
+  // New: Method to update user password
+  Future<bool> updateUserPassword(String email, String oldPassword, String newPassword) async {
     final db = await database;
 
-    // Step 1: Verify the old password.
-    final isValid = await login(email, oldPassword);
+    // 1. Verify old password first
+    final res = await db.query(
+      'users',
+      where: 'email = ? AND password = ?',
+      whereArgs: [email, oldPassword],
+    );
 
-    if (!isValid) {
-      log('DB_HELPER: Password change failed for $email. Invalid old password.');
-      throw 'Invalid current password.';
+    if (res.isEmpty) {
+      log('DB_HELPER: Failed password update for $email. Invalid old password.');
+      return false;
     }
 
-    // Step 2: Update the password.
-    await db.update(
-        'users',
-        {'password': newPassword},
-        where: 'email = ?',
-        whereArgs: [email]
+    // 2. Update with new password
+    final count = await db.update(
+      'users',
+      {'password': newPassword},
+      where: 'email = ?',
+      whereArgs: [email],
     );
-    log('DB_HELPER: Password successfully updated for $email.');
+
+    log('DB_HELPER: Password update for $email success: ${count > 0}');
+    return count > 0;
   }
 
 
@@ -118,6 +123,15 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> deleteAllTodos(String userEmail) async {
+    final db = await database;
+    await db.delete(
+      'todos',
+      where: 'userEmail = ?',
+      whereArgs: [userEmail],
+    );
+  }
+
   Future<bool> insertUser(String email, String password) async {
     final db = await database;
     try {
@@ -135,12 +149,10 @@ class DatabaseHelper {
     final db = await database;
     await db.insert('todos', todo);
   }
-
   Future<void> updateTodo(Map<String,Object?> todo) async {
     final db = await database;
     await db.update('todos', todo, where: 'id = ?', whereArgs: [todo['id']]);
   }
-
   Future<void> deleteTodo(String id) async {
     final db = await database;
     await db.delete('todos', where: 'id = ?', whereArgs: [id]);

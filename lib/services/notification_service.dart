@@ -25,16 +25,11 @@ class NotificationService {
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    // Request permissions for Android 13+
-    final androidImpl =
-    flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    if (androidImpl != null) {
-      await androidImpl.requestNotificationsPermission();
-      await androidImpl.requestExactAlarmsPermission();
-    }
+    // CRITICAL FIX: Removed the automatic request for exact alarms permissions
+    // and notification permissions here to prevent the system screen from showing
+    // on app startup. Permissions will be requested dynamically when needed.
 
-    // Request permissions for iOS
+    // Request basic permissions for iOS
     final iOSImpl =
     flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
         IOSFlutterLocalNotificationsPlugin>();
